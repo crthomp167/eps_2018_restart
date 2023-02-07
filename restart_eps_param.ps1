@@ -97,9 +97,34 @@ if ( $service.Status -eq [ServiceProcess.ServiceControllerStatus]::Running ) {
 
 ## The next three lines will stop the spooler service, and remove all stale jobs stuck in printer queues. 
 net stop spooler
-Remove-Item ((Get-ItemProperty -Path HKLM:\SYSTEM\CurrentControlSet\Control\Print\Printers).DefaultSpoolDirectory+"\*") -Recurse -Force
+sleep -Milliseconds 5000
 
+## Old Remove-Item line
+## Dangerous if ErrorActionPreference is set to default (AKA continue)
+# Remove-Item ((Get-ItemProperty -Path HKLM:\SYSTEM\CurrentControlSet\Control\Print\Printers).DefaultSpoolDirectory+"\*") -Recurse -Force 
 
+## Below is a semi-catch for a if this ItemProperty \ Directory does not exist.
+## This ItemProperty \ Directory will not exist if there are no printers installed. AKA, a fresh, new server.
+## Follow guide here to build a nicer reg entry catch - https://devblogs.microsoft.com/scripting/catch-powershell-errors-related-to-reading-the-registry
+## to use the above Remove-Item again.  If you don't catch this, it will throw an error, keep moving, and then start deleting everything on C:\   NOT GOOD
+$spoolerdir = (Get-ItemProperty -Path HKLM:\SYSTEM\CurrentControlSet\Control\Print\Printers).DefaultSpoolDirectory
+if ($spoolerdir -eq $null) {
+	$date = Get-Date
+	$date = $($ENV + " DANGER WILL ROBINSON " + $date + "")
+	Send-MailMessage -To "email.address@contoso.com" -From noreplyrestart@domain.org -Subject $date -Body "SpoolerDir equals null" -SmtpServer mailhost.contoso.com
+	## Exit because there's no point continuing if this directory does not exist.
+	Exit
+}
+else {
+
+Remove-Item -Path ($spoolerdir+"\*") -Recurse -Force
+## Email lines for testing to see if script gets this far.
+#$date = Get-Date
+#$date = $($ENV + " LINE 155 WORKED " + $date + "")
+#Send-MailMessage -To "christopher.thompson2@nm.org" -From noreplyrestart@nm.org -Subject $date -Body "If at 155 worked" -SmtpServer mailhost.nmh.org ## old relay - shp0a04wv.ch.cadhlt.org
+# ------------------
+
+sleep -Milliseconds 5000
 net start spooler
 sleep -Milliseconds 1000
 
