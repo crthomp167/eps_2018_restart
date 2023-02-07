@@ -1,15 +1,44 @@
 ##
-## Designed for EPS 2018+ and to be ran from a single, remote server. Preferrably on a server with a service 
-## account that has admin access to the EPS servers.  Recommend running from something other than one of the EPS servers.
-## 
-## Make sure nothing is restarting your EpicPrintService8x service too quickly or the script will hang waiting
-## for EpicPrintService8x and/or spooler to become fully stopped before proceeding.
-## 
-## This is for restarting the service and flushing stale spooler files. Not for rebooting.  
-## You can comment out 'net start spooler' and the  
+## Designed for EPS 2018+ and to be ran from a single, remote server. Preferrably on a server with a service 
+## account that has admin access to the EPS servers.  Recommend running from something other than one of the EPS servers.
+## 
+## Make sure nothing is restarting your EpicPrintServiceXX service too quickly or the script will hang waiting
+## for EpicPrintServiceXX and/or spooler to become fully stopped before proceeding.
+## 
+## This is for restarting the service and flushing stale spooler files. Not for rebooting.  
+## You can comment out 'net start spooler' and the  
 ## 'Set-EPSServiceMode start' line then add your own reboot line
+
+## ---------------------------------------------------------------------------------------------------------------------------------
+
+## Taken from WAM EPS Failover Script
+
+## <#.OUTPUTS
+##    The two or three digit integer corresponding to the highest running version of EPS
+##    (e.g If Epic November 2020 is the highest running version it will return 95)
+## #>
+## function Get-HighestEPSMajorVersion
+## {
+##    $runningEPSServices = Get-Service |
+##        Where-Object -FilterScript { ($PSItem.Name -like "EpicPrintService*") -and ($PSItem.Status -eq "Running") } |
+##        Select-Object -ExpandProperty Name
 ##
-##  Ex: .\restart_eps_param.ps1 -ENV PRD
+##    $highestVersion = ($runningEPSServices | ForEach-Object { $PSItem.Replace("EpicPrintService", "") -as [int] } | Measure-Object -Maximum).Maximum
+##
+##    return $highestVersion
+## }
+
+## if (-not $PSBoundParameters.ContainsKey("EPSMajorVersion"))
+## {
+##     $EPSMajorVersion = Get-HighestEPSMajorVersion
+## }
+
+## ---------------------------------------------------------------------------------------------------------------------------------
+
+#$ErrorActionPreference= 'silentlycontinue'
+#$WarningAction= 'silentlycontinue'
+
+##  Ex: .\restart_eps_param.ps1 -ENV PRD
 
 param (
         [Parameter(Mandatory = $true, ParameterSetName = 'ENV')]
@@ -69,6 +98,8 @@ if ( $service.Status -eq [ServiceProcess.ServiceControllerStatus]::Running ) {
 ## The next three lines will stop the spooler service, and remove all stale jobs stuck in printer queues. 
 net stop spooler
 Remove-Item ((Get-ItemProperty -Path HKLM:\SYSTEM\CurrentControlSet\Control\Print\Printers).DefaultSpoolDirectory+"\*") -Recurse -Force
+
+
 net start spooler
 sleep -Milliseconds 1000
 
